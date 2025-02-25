@@ -5,24 +5,33 @@ import org.example.Entity.*;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class DishDAOImpl {
     private static final String SELECT_DISH = """
         SELECT id_dish, name, unit_price FROM Dish WHERE id_dish = ?
     """;
 
-    private static final String SELECT_INGREDIENTS_AND_PRICES = """
+    private static final String SELECT_DISH_INGREDIENTS = """
         SELECT 
             di.quantity as dish_ingredient_quantity,
             di.unit as dish_ingredient_unit,
-            i.id_ingredient, i.name as ingredient_name, i.update_datetime,
-            p.value, p.unit as price_unit, p.date_price_expend, p.quantity as price_quantity
+            i.id_ingredient, 
+            i.name as ingredient_name, 
+            i.update_datetime
         FROM Dish_Ingredient di
         JOIN Ingredient i ON di.id_ingredient_Ingredient = i.id_ingredient
-        LEFT JOIN Price p ON i.id_ingredient = p.id_ingredient_Ingredient
-        WHERE di.id_dish_Dish = ?
+        WHERE di.id_dish_Dish = ? 
+    """;
+
+    private static final String SELECT_INGREDIENT_PRICES = """
+        SELECT 
+            value, 
+            unit as price_unit, 
+            date_price_expend, 
+            quantity as price_quantity
+        FROM Price 
+        WHERE id_ingredient_Ingredient = ?
     """;
 
     private final ConnectionJDBC connectionJDBC;
@@ -38,7 +47,9 @@ public class DishDAOImpl {
     public Dish findById(String dishId) {
         try (Connection connection = connectionJDBC.getConnection()) {
             Dish dish = findBasicById(connection, dishId);
-            if (dish != null) dish.setIngredients(findIngredientsByDishId(connection, dishId));
+            if (dish != null) {
+                dish.setIngredients(findIngredientsByDishId(connection, dishId));
+            }
             return dish;
         } catch (SQLException e) {
             throw new RuntimeException("Erreur lors du chargement du plat: " + dishId, e);
@@ -54,7 +65,7 @@ public class DishDAOImpl {
                             String.valueOf(rs.getObject("id_dish")),
                             rs.getString("name"),
                             rs.getDouble("unit_price"),
-                            new HashSet<>()
+                            new ArrayList<>()
                     );
                 }
             }
@@ -62,46 +73,61 @@ public class DishDAOImpl {
         return null;
     }
 
-    private Set<DishIngredient> findIngredientsByDishId(Connection connection, String dishId) throws SQLException {
-        Set<DishIngredient> dishIngredients = new HashSet<>();
+    private ArrayList<DishIngredient> findIngredientsByDishId(Connection connection, String dishId) throws SQLException {
+        Map<String, DishIngredient> dishIngredientsMap = new HashMap<>();
         Dish dish = findBasicById(connection, dishId);
 
-        try (PreparedStatement ps = connection.prepareStatement(SELECT_INGREDIENTS_AND_PRICES)) {
+        try (PreparedStatement ps = connection.prepareStatement(SELECT_DISH_INGREDIENTS)) {
             ps.setObject(1, dishId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
+                    String ingredientId = rs.getString("id_ingredient");
+
                     Ingredient ingredient = new Ingredient();
-                    ingredient.setIdIngredient(rs.getString("id_ingredient"));
+                    ingredient.setIdIngredient(ingredientId);
                     ingredient.setName(rs.getString("ingredient_name"));
                     ingredient.setUpdateDateTime(getLocalDateTime(rs, "update_datetime"));
+                    ingredient.setPrices(new ArrayList<>());
 
-                    if (rs.getObject("value") != null) {
-                        Price price = new Price(
-                                rs.getDouble("value"),
-                                Unit.valueOf(rs.getString("price_unit").trim()),
-                                getLocalDateTime(rs, "date_price_expend"),
-                                rs.getDouble("price_quantity"),
-                                ingredient
-                        );
-                        ingredient.getPrices().add(price);
-                    }
-
-                    dishIngredients.add(new DishIngredient(
+                    DishIngredient dishIngredient = new DishIngredient(
                             dish,
                             ingredient,
                             rs.getDouble("dish_ingredient_quantity"),
                             Unit.valueOf(rs.getString("dish_ingredient_unit").trim())
-                    ));
+                    );
+
+                    dishIngredientsMap.put(ingredientId, dishIngredient);
                 }
             }
         }
-        return dishIngredients;
+
+        for (DishIngredient dishIngredient : dishIngredientsMap.values()) {
+            loadPricesForIngredient(connection, dishIngredient.getIngredient());
+        }
+
+        return new ArrayList<>(dishIngredientsMap.values());
+    }
+
+    private void loadPricesForIngredient(Connection connection, Ingredient ingredient) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(SELECT_INGREDIENT_PRICES)) {
+            ps.setString(1, ingredient.getIdIngredient());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Price price = new Price(
+                            rs.getDouble("value"),
+                            Unit.valueOf(rs.getString("price_unit").trim()),
+                            getLocalDateTime(rs, "date_price_expend"),
+                            rs.getDouble("price_quantity"),
+                            ingredient
+                    );
+                    ingredient.addPrice(price);
+                }
+            }
+        }
     }
 
     private LocalDateTime getLocalDateTime(ResultSet rs, String columnName) throws SQLException {
         Timestamp ts = rs.getTimestamp(columnName);
         return ts != null ? ts.toLocalDateTime() : null;
     }
-
-
 }

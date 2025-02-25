@@ -1,11 +1,8 @@
 package org.example.Entity;
 
 import lombok.*;
-
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -14,24 +11,21 @@ public class Ingredient {
     private String idIngredient;
     private String name;
     private LocalDateTime updateDateTime;
-    private Set<Price> prices;
-    private Set<DishIngredient> dishIngredients;
+    private List<Price> prices;
+    private List<DishIngredient> dishIngredients;
 
     public Ingredient() {
-        this.prices = new HashSet<>();
-        this.dishIngredients = new HashSet<>();
+        this.prices = new ArrayList<>();
+        this.dishIngredients = new ArrayList<>();
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Ingredient that = (Ingredient) o;
-        return idIngredient == that.idIngredient && Objects.equals(name, that.name) && Objects.equals(updateDateTime, that.updateDateTime) && Objects.equals(prices, that.prices) && Objects.equals(dishIngredients, that.dishIngredients);
+    // Méthode pour ajouter un prix à la liste
+    public void addPrice(Price price) {
+        this.prices.add(price);
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(idIngredient, name, updateDateTime, prices, dishIngredients);
+    // Méthode pour ajouter un ingrédient à la liste
+    public void addDishIngredient(DishIngredient dishIngredient) {
+        this.dishIngredients.add(dishIngredient);
     }
 }
-

@@ -2,10 +2,7 @@ package org.example.Entity;
 
 import lombok.*;
 import java.time.LocalDateTime;
-
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 @Getter
 @Setter
@@ -14,33 +11,32 @@ public class Dish {
     private String id;
     private String name;
     private double unitPrice;
-    private Set<DishIngredient> Ingredients;
+    private List<DishIngredient> ingredients;
 
     public Dish() {
-        this.Ingredients = new HashSet<>();
+        this.ingredients = new ArrayList<>();
     }
 
     /**
      * Calcule le coût des ingrédients pour une date donnée
      */
     public double calculateIngredientsCost(LocalDateTime date) {
-        if (Ingredients == null || Ingredients.isEmpty()) {
+        if (ingredients == null || ingredients.isEmpty()) {
             return 0.0;
         }
         double totalCost = 0.0;
-        for (DishIngredient di : Ingredients) {
+        for (DishIngredient di : ingredients) {
             totalCost += calculateIngredientCost(di, date);
         }
         return totalCost;
     }
 
     /**
-     * Calcule le coût avec les prix les plus récents
+     * Calcule le coût des ingrédients avec les prix les plus récents (pour la date actuelle si null)
      */
     public double calculateIngredientsCost() {
         return calculateIngredientsCost(null);
     }
-
 
     private double calculateIngredientCost(DishIngredient dishIngredient, LocalDateTime date) {
         Price price = findAppropriatePrice(dishIngredient.getIngredient(), date);
@@ -49,28 +45,36 @@ public class Dish {
     }
 
     private Price findAppropriatePrice(Ingredient ingredient, LocalDateTime date) {
-        Price appropriatePrice = null;
-        LocalDateTime mostRecentDate = null;
-
-        for (Price price : ingredient.getPrices()) {
-            if (date == null || !price.getDatePriceExpend().isAfter(date)) {
-                if (mostRecentDate == null || price.getDatePriceExpend().isAfter(mostRecentDate)) {
-                    mostRecentDate = price.getDatePriceExpend();
-                    appropriatePrice = price;
+        System.out.println("Liste des prix disponibles :");
+        for (Price p : ingredient.getPrices()) {
+            System.out.println(p.getDatePriceExpend() + " -> " + p.getValue());
+        }
+        if (ingredient.getPrices() == null || ingredient.getPrices().isEmpty()) {
+            throw new IllegalStateException("Aucun prix disponible pour " + ingredient.getName());
+        }
+        if (date != null) {
+            for (Price price : ingredient.getPrices()) {
+                if (price.getDatePriceExpend().toLocalDate().isEqual(date.toLocalDate())) {
+                    System.out.println("Prix trouvé pour la date exacte : " + price.getValue());
+                    return price;
                 }
             }
+            Price closestPrice = ingredient.getPrices().stream()
+                    .filter(p -> p.getDatePriceExpend().toLocalDate().isBefore(date.toLocalDate()))
+                    .max(Comparator.comparing(Price::getDatePriceExpend))
+                    .orElseThrow(() -> new IllegalStateException("Aucun prix trouvé avant la date " + date));
+
+            System.out.println("Prix le plus proche avant la date : " + closestPrice.getValue());
+            return closestPrice;
+        } else {
+            return ingredient.getPrices().stream()
+                    .max(Comparator.comparing(Price::getDatePriceExpend))
+                    .orElseThrow(() -> new IllegalStateException("Aucun prix trouvé pour " + ingredient.getName()));
         }
-        if (appropriatePrice == null) {
-            throw new IllegalStateException("Prix non trouvé pour " + ingredient.getName());
-        }
-        return appropriatePrice;
     }
 
     private void validateUnits(DishIngredient dishIngredient, Price price) {
-        if (dishIngredient.getUnit() != price.getUnit()) {
-            System.out.println("Incompatible units detected for: " + dishIngredient.getIngredient().getName());
-            System.out.println("Dish Ingredient Unit: " + dishIngredient.getUnit());
-            System.out.println("Price Unit: " + price.getUnit());
+        if (!dishIngredient.getUnit().equals(price.getUnit())) {
             throw new IllegalStateException("Unités incompatibles pour " + dishIngredient.getIngredient().getName());
         }
     }
@@ -79,15 +83,13 @@ public class Dish {
         return price.getValue() * quantity;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) return false;
-        Dish dish = (Dish) o;
-        return Double.compare(unitPrice, dish.unitPrice) == 0 && Objects.equals(id, dish.id) && Objects.equals(name, dish.name) && Objects.equals(Ingredients, dish.Ingredients);
+    public double getGrossMargin() {
+        double totalCost = calculateIngredientsCost();
+        return unitPrice - totalCost;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, name, unitPrice, Ingredients);
+    // Méthode pour ajouter un ingrédient à la liste
+    public void addIngredient(DishIngredient ingredient) {
+        this.ingredients.add(ingredient);
     }
 }
