@@ -45,7 +45,7 @@ public class DishDAOImplTest {
         double actualCost = hotDog.calculateIngredientsCost(testDate);
         System.out.println("Coût des ingrédients pour la date " + testDate + " : " + actualCost);
 
-        double expectedCost = Double.parseDouble(null);
+        double expectedCost = 5500;
 
         // Assertion pour vérifier que le coût réel correspond au coût attendu
         assertEquals(expectedCost, actualCost, 0.01);
@@ -59,7 +59,7 @@ public class DishDAOImplTest {
         double actualCost = hotDog.getGrossMargin();
         System.out.println(actualCost);
         // Le coût attendu pour cette date (1er janvier 2025)
-        double expectedCost = 9500.0;  // Valeur attendue pour les prix du 1er janvier
+        double expectedCost = 9500.0;
 
         // Assertion pour vérifier que le coût réel correspond au coût attendu
         assertEquals(expectedCost, actualCost, 0.01);

@@ -19,12 +19,10 @@ public class Ingredient {
         this.dishIngredients = new ArrayList<>();
     }
 
-    // Méthode pour ajouter un prix à la liste
     public void addPrice(Price price) {
         this.prices.add(price);
     }
 
-    // Méthode pour ajouter un ingrédient à la liste
     public void addDishIngredient(DishIngredient dishIngredient) {
         this.dishIngredients.add(dishIngredient);
     }

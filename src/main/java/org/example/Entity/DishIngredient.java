@@ -10,5 +10,4 @@ public class DishIngredient {
     private Ingredient ingredient;
     private double quantity;
     private Unit unit;
-
 }

@@ -49,24 +49,21 @@ public class Dish {
         for (Price p : ingredient.getPrices()) {
             System.out.println(p.getDatePriceExpend() + " -> " + p.getValue());
         }
+
         if (ingredient.getPrices() == null || ingredient.getPrices().isEmpty()) {
             throw new IllegalStateException("Aucun prix disponible pour " + ingredient.getName());
         }
-        if (date != null) {
-            for (Price price : ingredient.getPrices()) {
-                if (price.getDatePriceExpend().toLocalDate().isEqual(date.toLocalDate())) {
-                    System.out.println("Prix trouvé pour la date exacte : " + price.getValue());
-                    return price;
-                }
-            }
-            Price closestPrice = ingredient.getPrices().stream()
-                    .filter(p -> p.getDatePriceExpend().toLocalDate().isBefore(date.toLocalDate()))
-                    .max(Comparator.comparing(Price::getDatePriceExpend))
-                    .orElseThrow(() -> new IllegalStateException("Aucun prix trouvé avant la date " + date));
 
-            System.out.println("Prix le plus proche avant la date : " + closestPrice.getValue());
+        if (date != null) {
+            Price closestPrice = ingredient.getPrices().stream()
+                    .filter(p -> !p.getDatePriceExpend().toLocalDate().isAfter(date.toLocalDate()))
+                    .max(Comparator.comparing(Price::getDatePriceExpend))
+                    .orElseThrow(() -> new IllegalStateException("Aucun prix trouvé avant ou à la date " + date));
+
+            System.out.println("Prix le plus proche avant ou à la date : " + closestPrice.getValue());
             return closestPrice;
         } else {
+            // Si aucune date n'est fournie, retourner le prix le plus récent
             return ingredient.getPrices().stream()
                     .max(Comparator.comparing(Price::getDatePriceExpend))
                     .orElseThrow(() -> new IllegalStateException("Aucun prix trouvé pour " + ingredient.getName()));
@@ -88,7 +85,6 @@ public class Dish {
         return unitPrice - totalCost;
     }
 
-    // Méthode pour ajouter un ingrédient à la liste
     public void addIngredient(DishIngredient ingredient) {
         this.ingredients.add(ingredient);
     }
